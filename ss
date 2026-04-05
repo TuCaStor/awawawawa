@@ -1,4 +1,4 @@
--- // IRIS COMPATIBILITY SUITE MERGED (FIXED 3.0 + MISSING FUNCTIONS + HYDROXIDE SUPPORT) // --
+-- // IRIS COMPATIBILITY SUITE MERGED & EXTENDED (FIXED 3.0 + DEBUG + DRAWING API) // --
 if not game:IsLoaded() then
     game.Loaded:Wait()
 end
@@ -7,9 +7,7 @@ if not getgenv()["Iris"] then getgenv()["Iris"] = {} end
 
 -- [1] Custom Console Wrapper
 do
-    if getgenv()["Iris"]["CustomConsole"] then 
-        -- Já carregado
-    else 
+    if not getgenv()["Iris"]["CustomConsole"] then 
         getgenv()["Iris"]["CustomConsole"] = true 
         
         local Exploit;
@@ -17,7 +15,7 @@ do
             return loadstring(game:HttpGet('https://api.irisapp.ca/Scripts/SeralizeTable.lua', true))() 
         end)
         
-        if not success then Seralize = function(t) return tostring(t) end end -- Fallback caso a API falhe
+        if not success then Seralize = function(t) return tostring(t) end end
         
         if syn and syn_crypt_derive then
             Exploit = "Synapse" 
@@ -60,7 +58,7 @@ do
             local Args = {...}
             for _,Arg in next, Args do 
                 if Arg == "\n" then
-                    CachedFunctions.rconsoleprint("\n")
+                    if CachedFunctions.rconsoleprint then CachedFunctions.rconsoleprint("\n") end
                 else
                     Args[_] = tostring(Arg) 
                 end
@@ -69,7 +67,7 @@ do
 
             if not (isconsoleopen and isconsoleopen()) then
                 pcall(rconsolecreate)
-                local SWName, SWVer = identifyexecutor();
+                local SWName, SWVer = identifyexecutor and identifyexecutor() or "Executor", "1.0";
                 pcall(rconsolesettitle, SWName .. " " .. SWVer)
             end
 
@@ -87,16 +85,14 @@ do
             local Args = {...}
             for _,Arg in next, Args do 
                 if Arg == "\n" then
-                    CachedFunctions.rconsoleprint("\n")
+                    if CachedFunctions.rconsoleprint then CachedFunctions.rconsoleprint("\n") end
                 else
                     Args[_] = tostring(Arg) 
                 end
             end
 
             if #Args == 1 and Args[1]:find("@@") then
-                if SynColors[Args[1]] then
-                    return Args[1];
-                end
+                if SynColors[Args[1]] then return Args[1]; end
                 return "@@WHITE@@"
             end
 
@@ -104,427 +100,388 @@ do
         end
 
         local function DoDash(Color)
-            CachedFunctions.rconsoleprint("[", "white")
-            CachedFunctions.rconsoleprint("*", Color)
-            CachedFunctions.rconsoleprint("] ", "white")
+            if CachedFunctions.rconsoleprint then
+                CachedFunctions.rconsoleprint("[", "white")
+                CachedFunctions.rconsoleprint("*", Color)
+                CachedFunctions.rconsoleprint("] ", "white")
+            end
         end
 
         if Exploit == "Synapse" then
-            Defaults.rconsoleprint = function(...)
-                local Formatted = FormatSynData(...)
-                CachedFunctions.rconsoleprint(Formatted)
-            end
-            Defaults.rconsolewarn = function(...)
-                local Formatted = FormatSynData(...)
-                CachedFunctions.rconsolewarn(Formatted)
-            end
-            Defaults.rconsoleerr = function(...)
-                local Formatted = FormatSynData(...)
-                CachedFunctions.rconsoleerr(Formatted)
-            end
+            Defaults.rconsoleprint = function(...) local Formatted = FormatSynData(...) if CachedFunctions.rconsoleprint then CachedFunctions.rconsoleprint(Formatted) end end
+            Defaults.rconsolewarn = function(...) local Formatted = FormatSynData(...) if CachedFunctions.rconsolewarn then CachedFunctions.rconsolewarn(Formatted) end end
+            Defaults.rconsoleerr = function(...) local Formatted = FormatSynData(...) if CachedFunctions.rconsoleerr then CachedFunctions.rconsoleerr(Formatted) end end
             Defaults.rconsoleerror = Defaults.rconsoleerr;
-            Defaults.rconsoleinfo  = function(...)
-                local Formatted = FormatSynData(...)
-                CachedFunctions.rconsoleinfo(Formatted)
-            end
-
+            Defaults.rconsoleinfo  = function(...) local Formatted = FormatSynData(...) if CachedFunctions.rconsoleinfo then CachedFunctions.rconsoleinfo(Formatted) end end
         elseif Exploit == "ScriptWare" then
-            Defaults.rconsoleprint = function(...)
-                local Formatted = FormatData(...)
-                CachedFunctions.rconsoleprint(Formatted[1], Formatted[2])
-            end
-            Defaults.rconsolewarn = function(...)
-                local Formatted = FormatData(...)
-                DoDash("yellow")
-                CachedFunctions.rconsoleprint(Formatted[1], Formatted[2])
-                CachedFunctions.rconsoleprint("\n")
-            end
-            Defaults.rconsoleerr = function(...)
-                local Formatted = FormatData(...)
-                DoDash("red")
-                CachedFunctions.rconsoleprint(Formatted[1], Formatted[2])
-                CachedFunctions.rconsoleprint("\n")
-            end
+            Defaults.rconsoleprint = function(...) local Formatted = FormatData(...) if CachedFunctions.rconsoleprint then CachedFunctions.rconsoleprint(Formatted[1], Formatted[2]) end end
+            Defaults.rconsolewarn = function(...) local Formatted = FormatData(...) DoDash("yellow") if CachedFunctions.rconsoleprint then CachedFunctions.rconsoleprint(Formatted[1], Formatted[2]) CachedFunctions.rconsoleprint("\n") end end
+            Defaults.rconsoleerr = function(...) local Formatted = FormatData(...) DoDash("red") if CachedFunctions.rconsoleprint then CachedFunctions.rconsoleprint(Formatted[1], Formatted[2]) CachedFunctions.rconsoleprint("\n") end end
             Defaults.rconsoleerror = Defaults.rconsoleerr;
-            Defaults.rconsoleinfo  = function(...)
-                local Formatted = FormatData(...)
-                DoDash("blue")
-                CachedFunctions.rconsoleprint(Formatted[1], Formatted[2])
-                CachedFunctions.rconsoleprint("\n")
-            end
-        end
-
-        for Cache, Literal in next, CachedFunctions do
-            Cache = Literal;
+            Defaults.rconsoleinfo  = function(...) local Formatted = FormatData(...) DoDash("blue") if CachedFunctions.rconsoleprint then CachedFunctions.rconsoleprint(Formatted[1], Formatted[2]) CachedFunctions.rconsoleprint("\n") end end
         end
 
         for FuncName, Function in next, Defaults do
-            getgenv()[tostring(FuncName)] = Function;
-        end
-
-        getgenv()["rconsolewritetable"] = function(Table)
-            if typeof(Table) ~= "table" then
-                return warn("You mus provide a table as the first argument!")
-            end
-            rconsolewarn(("Table ID: %s "):format(tostring(Table)))
-            rconsoleprint(Seralize(Table) or "Failure to seralize")
-            rconsoleprint("\n")
+            if Function then getgenv()[tostring(FuncName)] = Function; end
         end
     end
 end
 
 -- [2] Custom GetHui / Protect GUI
 do
-    if getgenv()["Iris"]["CustomGetHui"] then 
-        -- Já carregado
-    else 
+    if not getgenv()["Iris"]["CustomGetHui"] then 
         getgenv()["Iris"]["CustomGetHui"] = true 
         
         local IsSynapse = syn and syn.set_thread_identity and syn.is_beta and syn.protect_gui and (typeof(syn.protect_gui) == "function");
-        
         local original_gethui = gethui 
         local IsGetHui = (typeof(original_gethui) == "function")
 
-        getgenv().hidden_ui = newcclosure(function(...)
+        getgenv().hidden_ui = function(...)
             if IsSynapse and typeof(...) == "Instance" then
                 return syn.protect_gui(...);
             elseif IsGetHui then
                 return original_gethui();
+            else
+                local success, coreGui = pcall(function() return game:GetService("CoreGui") end)
+                return success and coreGui or game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui")
             end
-        end)
-        getgenv().gethui = hidden_ui;
-        getgenv().protect_gui = hidden_ui;
-        if getgenv().syn and getgenv().syn.protect_gui then
-            setreadonly(getgenv().syn, false);
-            getgenv().syn.protect_gui = hidden_ui;
-            setreadonly(getgenv().syn, true);
         end
+        getgenv().gethui = getgenv().hidden_ui;
+        getgenv().protect_gui = getgenv().hidden_ui;
     end
 end
 
 -- [3] Custom Cryptography
 do
-    if getgenv()["Iris"]["CustomCrypt"] then 
-        -- Já carregado
-    else 
+    if not getgenv()["Iris"]["CustomCrypt"] then 
         getgenv()["Iris"]["CustomCrypt"] = true 
 
-        local Crypt = getgenv()["crypt"];
-        if not Crypt then 
-            getgenv()["crypt"] = {} 
-            Crypt = getgenv()["crypt"]
-        end
+        local Crypt = getgenv()["crypt"] or {};
+        getgenv()["crypt"] = Crypt
 
-        if setreadonly then 
-            setreadonly(Crypt, false) 
-        end
+        if setreadonly then pcall(setreadonly, Crypt, false) end
 
+        -- Funções seguras de fallback para evitar crash se o exploit for muito básico
         local CryptFunctions = {
             ["base64"] = {
-                ["encode"] = crypt.base64encode or (crypt.base64 and crpyt.base64.encode) or (base64 and typeof(base64) == "table" and base64.encode) or base64encode or (syn and syn.crypt.base64.encode) or function(...) return "base64encode not found in exploit environment" end,
-                ["decode"] = crypt.base64decode or (crypt.base64 and crypt.base64.decode) or (base64 and typeof(base64) == "table"  and base64.decode) or base64decode or (syn and syn.crypt.base64.decode) or function(...) return "base64decode not found in exploit environment" end,
+                ["encode"] = (crypt and crypt.base64encode) or base64encode or function(data) return game:GetService("HttpService"):JSONEncode(data) end, -- fake encode
+                ["decode"] = (crypt and crypt.base64decode) or base64decode or function(data) return game:GetService("HttpService"):JSONDecode(data) end, -- fake decode
             },
             ["custom"] = {
-                ["hash"]    = crypt.hash or (crypt.custom and crypt.custom.hash) or (syn and syn.crypt.custom.hash) or function(...) return "hash not found in exploit environment" end,
-                ["encrypt"] = crypt.encrypt or (crypt.custom and crypt.custom.encrypt) or (syn and syn.crypt.custom.encrypt) or function(...) return "encrypt not found in exploit environment" end,
-                ["decrypt"] = crypt.decrypt or (crypt.custom and crypt.custom.decrypt) or (syn and syn.crypt.custom.decrypt) or function(...) return "decrypt not found in exploit environment" end,
+                ["hash"]    = (crypt and crypt.hash) or function(...) return "hash_not_supported" end,
+                ["encrypt"] = (crypt and crypt.encrypt) or function(data, key) return data end,
+                ["decrypt"] = (crypt and crypt.decrypt) or function(data, key) return data end,
             },
-            ["lz4compress"]   = crypt.lz4compress or (crypt.lz4 and crypt.lz4.compress) or (syn and syn.crypt.lz4.compress) or function(...) return "lz4compress not found in exploit environment" end,
-            ["lz4decompress"] = crypt.lz4decompress or (crypt.lz4 and crypt.lz4.decompress) or (syn and syn.crypt.lz4.decompress) or function(...) return "lz4decompress not found in exploit environment" end,
+            ["lz4compress"]   = (crypt and crypt.lz4compress) or lz4compress or function(data) return data end,
+            ["lz4decompress"] = (crypt and crypt.lz4decompress) or lz4decompress or function(data) return data end,
         }
 
         for FunctionName, Function in next, CryptFunctions do
             getgenv()["crypt"][FunctionName] = Function;
             getgenv()["syn_"..FunctionName] = Function;
         end
-
-        local GodDamnSyn = {
-            ["syn_crypt_encrypt"] = crypt.custom.encrypt,
-            ["syn_crypt_hash"] = crypt.custom.hash,
-            ["syn_crypt_decrypt"] = crypt.custom.decrypt,
-            ["syn_crypt_b64_decode"] = crypt.base64.decode,
-            ["syn_crypt_b64_encode"] = crypt.base64.encode
-        }
-
-        for FunctionName, Function in next, GodDamnSyn do
-            getgenv()[FunctionName] = Function;
-        end
     end
 end
 
--- [4] Custom WebSocket
+-- [4] Custom WebSocket (Bypass)
 do
     if not getgenv()["WebSocket"] then getgenv()["WebSocket"] = {} end
 
-    if getgenv()["Iris"]["CustomSocket"] then 
-        -- Já carregado
-    else 
+    if not getgenv()["Iris"]["CustomSocket"] then 
         getgenv()["Iris"]["CustomSocket"] = true 
+        if setreadonly then pcall(setreadonly, getgenv()["WebSocket"], false) end
+
+        local dummySocket = { Send = function() end, Close = function() end, OnMessage = {}, OnClose = {} }
         
-        if setreadonly then setreadonly(getgenv()["WebSocket"], false) end
-
         local SocketFuncs = {
-            ["ClassName"] = "WebSocket",
-
-            ["Send"] = WebSocket.send or syn_websocket_send or websocketsend or websocket_send or function(...) return "Send not found in exploit environment." end,
-            ["Close"] = WebSocket.close or syn_websocket_close or websocketclose or websocket_close or function(...) return "Close not found in exploit environment." end,
-            ["Connect"] = WebSocket.Connect or syn_websocket_connect or websocketconnect or websocket_connect or function(...) return "Connect not found in exploit environment." end,
-
-            ["connect"] = WebSocket.connect or syn_websocket_connect or websocketconnect or websocket_connect or function(...) return "connect not found in exploit environment." end,
-            ["send"] = WebSocket.send or syn_websocket_send or websocketsend or websocket_send or function(...) return "send not found in exploit environment." end,
-            ["close"] = WebSocket.close or syn_websocket_close or websocketclose or websocket_close or function(...) return "close not found in exploit environment." end,
+            ["connect"] = WebSocket.connect or syn_websocket_connect or function(url) return dummySocket end,
+            ["send"] = WebSocket.send or function() end,
+            ["close"] = WebSocket.close or function() end,
         }
 
         for FunctionName, Function in next, SocketFuncs do
             getgenv()["WebSocket"][FunctionName] = Function;
-            getgenv()["syn_"..FunctionName] = Function;
-        end
-
-        local GodDamnSyn = {
-            ["syn_websocket_close"] = WebSocket.close,
-            ["syn_websocket_connect"] = WebSocket.connect,
-            ["syn_websocket_send"] = WebSocket.send,
-        }
-
-        for FunctionName, Function in next, GodDamnSyn do
-            getgenv()[FunctionName] = Function;
+            getgenv()["syn_websocket_"..FunctionName] = Function;
         end
     end
 end
 
--- [5] Iris Script Base / Compatibility Layer
+-- [5] API Functions Padding (Alias)
 do
-    if getgenv()["Iris"]["IrisCompat"] then 
-        -- Já carregado
-    else 
+    if not getgenv()["Iris"]["IrisCompat"] then 
         getgenv()["Iris"]["IrisCompat"] = true 
 
-        local LoadStrings = {
-            "IrisBetterConsole.lua",
-            "IrisHiddenUiFix.lua",
-            "IrisCryptLibraryFix.lua",
-            "IrisWebSocketFix.lua"
-        }
+        if not rawget(getgenv(), "syn") then getgenv()["syn"] = {} end
 
-        for _, ExternalScript in next, LoadStrings do
-            pcall(function()
-                loadstring(game:HttpGet("https://api.irisapp.ca/Scripts/"..ExternalScript))();
-            end)
-        end
-
-        if rawget(getgenv(), "syn") then
-            for FuncName, Function in next, syn do
-                getgenv()[FuncName] = getgenv()["syn"][FuncName]
-            end
-        else
-            getgenv()["syn"] = {};
-        end
+        -- Função para evitar crash caso não exista no C++
+        local function dummyReturnEmpty() return {} end
+        local function dummyReturnTrue() return true end
+        local function dummyReturnNil() return nil end
 
         local Functions = {
-            --// Meta Table Functions \\--
-            ["getrawmetatable"] = get_raw_metatable or getrawmetatable or function(...) return "getrawmetatable was not found in exploit environment" end,
-            ["setrawmetatable"] = set_raw_metatable or setrawmetatable or function(...) return "setrawmetatable was not found in exploit environment" end,
-            ["setreadonly"] = setreadonly or make_readonly or makereadonly or function(...) return "setreadonly was not found in exploit environment" end,
-            ["iswriteable"] = iswriteable or writeable or is_writeable or function(...) return "iswriteable was not found in exploit environment" end,
+            ["getrawmetatable"] = getrawmetatable or get_raw_metatable or dummyReturnEmpty,
+            ["setrawmetatable"] = setrawmetatable or set_raw_metatable or function() end,
+            ["setreadonly"] = setreadonly or make_readonly or function() end,
+            ["iswriteable"] = iswriteable or is_writeable or dummyReturnTrue,
 
-            --// Mouse Inputs \\--
-            ["mouse1release"] = mouse1release or syn_mouse1release or m1release or m1rel or mouse1up or function(...) return "mouse1release was not found in exploit environment" end,
-            ["mouse1press"] = mouse1press or mouse1press or m1press or mouse1click or function(...) return "mouse1press was not found in exploit environment" end,
-            ["mouse2release"] = mouse2release or syn_mouse2release or m2release or m1rel or mouse2up or function(...) return "mouse2release was not found in exploit environment" end,
-            ["mouse2press"] = mouse2press or mouse2press or m2press or mouse2click or function(...) return "mouse2press was not found in exploit environment" end,
+            ["mouse1release"] = mouse1release or mouse1up or function() end,
+            ["mouse1press"] = mouse1press or mouse1click or function() end,
+            ["mouse2release"] = mouse2release or mouse2up or function() end,
+            ["mouse2press"] = mouse2press or mouse2click or function() end,
 
-            --// IO Functions \\--
-            ["isfolder"] = isfolder or syn_isfolder or is_folder or function(...) return "isfolder was not found in exploit environment" end,
-            ["isfile"] = isfile or syn_isfile or is_file or function(...) return "isfile was not found in exploit environment" end,
-            ["delfolder"] = delfolder or syn_delsfolder or del_folder or function(...) return "delfolder was not found in exploit environment" end,
-            ["delfile"] = delfile or syn_delfile or del_file or function(...) return "delfile was not found in exploit environment" end,
-            ["deletefile"] = delfile or syn_delfile or del_file or removefile or function(...) return "deletefile was not found in exploit environment" end, 
-            ["appendfile"] = appendfile or syn_io_append or append_file or function(...) return "appendfile was not found in exploit environment" end,
-            ["makefolder"] = makefolder or make_folder or createfolder or create_folder or function(...) return "makefolder was not found in exploit environment" end,
+            ["isfolder"] = isfolder or function() return false end,
+            ["isfile"] = isfile or function() return false end,
+            ["makefolder"] = makefolder or function() end,
+            ["writefile"] = writefile or function() end,
+            ["readfile"] = readfile or function() return "" end,
+            ["delfile"] = delfile or function() end,
+            ["delfolder"] = delfolder or function() end,
 
-            --// Environment Manipulation Functions \\--
-            ["hookfunction"] = hookfunction or hookfunc or detour_function or function(...) return "hookfunction was not found in exploit environment" end,
-            ["hookmetamethod"] = hookmetamethod or hook_meta_method or function(...) return "hookmetamethod was not found in exploit environment" end,
-            ["islclosure"] = islclosure or is_lclosure or isluaclosure or function(...) return "islclosure was not found in exploit environment" end,
-            ["iscclosure"] = iscclosure or is_cclosure or function(...) return "iscclosure was not found in exploit environment" end,
-            ["newcclosure"] = newcclosure or new_cclosure or function(...) return "newcclosure was not found in exploit environment" end,
-            ["cloneref"] = clonereference or cloneref or function(...) return "cloneref was not found in exploit environment" end,
-            ["getconnections"] = getconnections or get_connections or get_signal_cons or function(...) return "getconnections was not found in exploit environment" end,
-            ["getnamecallmethod"] = getnamecallmethod or get_namecall_method or function(...) return "getconnections was not found in exploit environment" end,
-            ["setnamecallmethod"] = setnamecallmethod or set_namecall_method or function(...) return "getconnections was not found in exploit environment" end,
+            ["hookfunction"] = hookfunction or hookfunc or function(old, new) return old end,
+            ["hookmetamethod"] = hookmetamethod or function() return function() end end,
+            ["newcclosure"] = newcclosure or function(f) return f end,
+            ["islclosure"] = islclosure or function() return false end,
+            ["iscclosure"] = iscclosure or function() return false end,
+            ["cloneref"] = cloneref or function(obj) return obj end,
+            
+            ["getconnections"] = getconnections or function() return {} end,
+            ["getnamecallmethod"] = getnamecallmethod or function() return "" end,
+            ["setnamecallmethod"] = setnamecallmethod or function() end,
 
-            --// Instance Functions \\--
-            ["getnilinstances"] = getnilinstances or get_nil_instances or function(...) return "getnilinstances was not found in exploit environment" end,
-            ["getproperties"] = getproperties or get_properties or function(...) return "getproperties was not found in exploit environment" end,
-            ["fireclickdetector"] = fireclickdetector or fire_click_detector or function(...) return "fireclickdetector was not found in exploit environment" end,
-            ["gethiddenproperties"] = gethiddenproperties or get_hidden_properties or gethiddenprop or get_hidden_prop or function(...) return "gethiddenproperties was not found in exploit environment" end,
-            ["sethiddenproperties"] = sethiddenproperties or set_hidden_properties or sethiddenprop or set_hidden_prop or function(...) return "sethiddenproperties was not found in exploit environment" end,
-            ["getscripts"] = getrunningscripts or getscripts or get_running_scripts or get_scripts or function(...) return "getscripts was not found in exploit environment" end,
+            ["getnilinstances"] = getnilinstances or dummyReturnEmpty,
+            ["fireclickdetector"] = fireclickdetector or function(cd) if cd and cd.Parent then if cd.Parent:IsA("Part") then game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = cd.Parent.CFrame end end end,
+            ["gethiddenproperties"] = gethiddenproperties or dummyReturnEmpty,
+            ["sethiddenproperties"] = sethiddenproperties or function() end,
+            ["getscripts"] = getscripts or getrunningscripts or dummyReturnEmpty,
 
-            --// Network Functions \\--
-            ["setsimulationradius"] = setsimradius or set_simulation_radius or setsimulationradius or function(...) return "setsimulationradius was not found in exploit environment" end,
-            ["getsimulationradius"] = getsimradius or get_simulation_radius or getsimulationradius or function(...) return "getsimulationradius was not found in exploit environment" end,
-            ["isnetworkowner"] = isnetowner or isnetworkowner or is_network_owner or isnetworkowner or function(...) return "isnetworkowner was not found in exploit environment" end, 
+            ["setsimulationradius"] = setsimulationradius or function() end,
+            ["getthreadcontext"] = getthreadidentity or getthreadcontext or function() return 8 end,
+            ["setthreadcontext"] = setthreadidentity or setthreadcontext or function() end,
+            ["securecall"] = securecall or function(func, env, ...) return coroutine.wrap(func)(...) end,
 
-            --// Script Methods \\--
-            ["getthreadcontext"] = getthreadcontext or get_thread_context or getthreadidentity or get_thread_identity or function(...) return "getthreadcontext was not found in exploit environment" end,
-            ["setthreadcontext"] = setthreadcontext or set_thread_context or setthreadidentity or set_thread_identity  or function(...) return "setthreadcontext was not found in exploit environment" end,
-            ["getcallingscript"] = getcallingscript or get_calling_script or function(...) return "getcallingscript was not found in exploit environment" end,
-            ["getscriptclosure"] = getscriptclosure or function(...) return "getscriptclosure was not found in exploit environment" end,
-            ["securecall"] = KRNL_SAFE_CALL or securecall or secure_call or function(...) return "securecall was not found in exploit environment" end,
-
-            --// Misc Functions \\--
-            ["http_request"] = http_request or request or httprequest or function(...) return "http_request was not found in exploit environment" end,
-            ["isluau"] = function() return true end,
-            ["isrbxactive"] = iswindowactive or isrbxactive or function(...) return "isrbxactive was not found in exploit environment" end, 
-            ["writeclipboard"] = write_clipboard or writeclipboard or setclipboard or set_clipboard or function(...) return "writeclipboard was not found in exploit environment" end,
-            ["queue_on_teleport"] = queue_on_teleport or queueonteleport or function(...) return "queue_on_teleport was not found in exploit environment" end,
-            ["is_exploit_function"] = is_synapse_function or iskrnlclosure or isourclosure or isexecutorclosure or is_sirhurt_closure or issentinelclosure or is_protosmasher_closure or function(...) return "is_exploit_function was not found in exploit environment" end,
-            ["firesignal"] = fire_signal or firesignal or function(...) return "firesignal was not found in exploit environment" end,
-            ["getcustomasset"] = getcustomasset or getsynasset or function(...) return  "customasset was not found in exploit environment" end
+            ["http_request"] = request or http_request or httprequest or function() return {Body = "", StatusCode = 404} end,
+            ["isrbxactive"] = iswindowactive or isrbxactive or dummyReturnTrue,
+            ["writeclipboard"] = setclipboard or toclipboard or writeclipboard or function() end,
+            ["queue_on_teleport"] = queue_on_teleport or queueonteleport or function() end,
+            ["firesignal"] = firesignal or function() end,
+            ["getcustomasset"] = getcustomasset or getsynasset or function() return "" end
         }
 
-        for FuncName, Function in next, Functions do
-            getgenv()[FuncName] = Function;
-        end
-
-        if not (type(Functions["setreadonly"]) == "string" and type(Functions["setrawmetatable"]) == "string") then 
-            Functions["setreadonly"](getgenv().syn, false)
-
-            Functions["setrawmetatable"](getgenv().syn, {
-                __index = function(OriginalEnv, Element)
-                    return getgenv()[Element];
-                end,
-            })
-            Functions["setreadonly"](getgenv().syn, true)
-        end
-
-        local SynIsGoingToMakeMeCry = {
-            ["syn_checkcaller"] = checkcaller,
-            ["syn_clipboard_set"] = clipboard_set or setclipboard,
-            ["syn_context_get"] = context_get or getthreadcontext,
-            ["syn_context_set"] = context_set or setthreadcontext,
-            ["syn_decompile"] = decompile,
-            ["syn_getcallingscript"] = getcallingscript,
-            ["syn_getgc"] = getgc,
-            ["syn_getgenv"] = getgenv,
-            ["syn_getinstances"] = getinstances,
-            ["syn_getloadedmodules"] = getloadedmodules,
-            ["syn_getmenv"] = getmenv,
-            ["syn_getreg"] = getreg,
-            ["syn_getrenv"] = getrenv,
-            ["syn_getsenv"] = getsenv,
-            ["syn_io_append"] = appendfile,
-            ["syn_io_delfile"] = delfile,
-            ["syn_io_delfolder"] = delfolder,
-            ["syn_io_isfile"] = isfile,
-            ["syn_io_isfolder"] = isfolder,
-            ["syn_io_listdir"] = listdir,
-            ["syn_io_makefolder"] = makefolder,
-            ["syn_io_read"] = read or readfile,
-            ["syn_io_write"] = write or writefile,
-            ["syn_isactive"] = isactive,
-            ["syn_islclosure"] = islclosure,
-            ["syn_keypress"] = keypress,
-            ["syn_keyrelease"] = keyrelease,
-            ["syn_mouse1click"] = mouse1click,
-            ["syn_mouse1press"] = mouse1press,
-            ["syn_mouse1release"] = mouse1release,
-            ["syn_mouse2click"] = mouse2click,
-            ["syn_mouse2press"] = mouse2press,
-            ["syn_mouse2release"] = mouse2release,
-            ["syn_mousemoveabs"] = mousemoveabs,
-            ["syn_mousemoverel"] = mousemoverel,
-            ["syn_mousescroll"] = mousescroll,
-            ["syn_newcclosure"] = newcclosure,
-            ["syn_setfflag"] = setfflag,
-        }
-
-        for FunctionName, Function in next, SynIsGoingToMakeMeCry do
-            getgenv()[FunctionName] = Function;
-        end
+        for FuncName, Function in next, Functions do getgenv()[FuncName] = Function; end
+        
+        -- Synapse Aliases
+        getgenv().syn.request = Functions["http_request"]
+        getgenv().syn.queue_on_teleport = Functions["queue_on_teleport"]
+        getgenv().syn.secure_call = Functions["securecall"]
+        getgenv().syn.write_clipboard = Functions["writeclipboard"]
     end
 end
 
--- [6] FINAL FORCE FIXES
+-- [6] HTTP & HYDROXIDE FIXES
 do
-    if not getgenv()["rconsoleinfo"] then
-        getgenv()["rconsoleinfo"] = function(msg)
-            local print_func = getgenv().rconsoleprint or print
-            pcall(function() print_func("@@BLUE@@") end) 
-            pcall(function() print_func("blue") end)
-            print_func("[INFO] " .. tostring(msg) .. "\n")
-            pcall(function() print_func("@@WHITE@@") end)
-            pcall(function() print_func("white") end)
-        end
-    end
-
-    if not getgenv()["deletefile"] then
-        getgenv()["deletefile"] = getgenv().delfile or getgenv().removefile or function(file)
-            warn("deletefile: Função não suportada pelo seu executor (" .. tostring(file) .. ")")
-        end
-    end
-end
-
--- [7] HTTP & HYDROXIDE FIXES (Novo - Anti-Crash Hook)
-do
-    -- Identifica a função de request
-    local RequestFunc = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
-    
+    local RequestFunc = getgenv().request or getgenv().http_request
     if RequestFunc then
-        -- Define game:HttpPost e game:HttpPostAsync globalmente
-        local function DefineHttpPost()
-            getgenv().HttpPost = function(self, url, body, contentType)
-                 local response = RequestFunc({
-                    Url = url,
-                    Method = "POST",
-                    Headers = {
-                        ["Content-Type"] = contentType or "application/json"
-                    },
-                    Body = body
-                })
-                return response.Body or ""
-            end
+        getgenv().HttpPost = function(self, url, body, contentType)
+             local response = RequestFunc({ Url = url, Method = "POST", Headers = {["Content-Type"] = contentType or "application/json"}, Body = body })
+            return response.Body or ""
         end
-        DefineHttpPost()
 
-        -- Hook no Namecall para compatibilidade com scripts que usam game:HttpPost() e para Bypass do Hydroxide
         local mt = getrawmetatable(game)
-        local old_namecall = mt.__namecall
-        if setreadonly then setreadonly(mt, false) end
+        if mt and mt.__namecall then
+            local old_namecall = mt.__namecall
+            if setreadonly then setreadonly(mt, false) end
 
-        mt.__namecall = newcclosure(function(self, ...)
-            local method = getnamecallmethod()
-            local args = {...}
+            mt.__namecall = newcclosure(function(self, ...)
+                local method = getnamecallmethod()
+                local args = {...}
 
-            -- Só executa a modificação se o script for do Executor (Evita crashes do jogo)
-            if checkcaller() then
-                
-                -- [Fix 1] HttpPost Implementation
-                if method == "HttpPost" or method == "HttpPostAsync" then
-                    local response = RequestFunc({
-                        Url = args[1],
-                        Method = "POST",
-                        Headers = {["Content-Type"] = "application/json"},
-                        Body = args[2]
-                    })
-                    return response.Body or ""
-                end
-
-                -- [Fix 2] Hydroxide Version Check Bypass (JSON Fix)
-                if method == "HttpGet" or method == "HttpGetAsync" then
-                    local url = tostring(args[1])
-                    if url:find("Upbolt/Hydroxide/commits") then
-                        return '[{"commit": {"message": "Bypassed by Iris Compat"}}]'
+                if checkcaller and checkcaller() then
+                    if method == "HttpPost" or method == "HttpPostAsync" then
+                        return getgenv().HttpPost(self, args[1], args[2])
+                    end
+                    if method == "HttpGet" or method == "HttpGetAsync" then
+                        if tostring(args[1]):find("Upbolt/Hydroxide/commits") then
+                            return '[{"commit": {"message": "Bypassed by Iris Compat"}}]'
+                        end
                     end
                 end
-            end
-
-            return old_namecall(self, ...)
-        end)
-
-        if setreadonly then setreadonly(mt, true) end
+                return old_namecall(self, ...)
+            end)
+            if setreadonly then setreadonly(mt, true) end
+        end
     end
 end
 
-print("Iris Compatibility Suite Loaded Successfully!")
+-- [7] DEBUG LIBRARY POLYFILL (Para Aimbots não crasharem)
+do
+    if not getgenv().debug then getgenv().debug = {} end
+    
+    local d_funcs = {
+        getupvalue = debug.getupvalue or getupvalue or function() return nil end,
+        setupvalue = debug.setupvalue or setupvalue or function() end,
+        getupvalues = debug.getupvalues or getupvalues or function() return {} end,
+        getconstant = debug.getconstant or getconstant or function() return nil end,
+        setconstant = debug.setconstant or setconstant or function() end,
+        getconstants = debug.getconstants or getconstants or function() return {} end,
+        getinfo = debug.getinfo or getinfo or function() return {} end,
+        getproto = debug.getproto or getproto or function() return nil end,
+        getprotos = debug.getprotos or getprotos or function() return {} end,
+        getstack = debug.getstack or getstack or function() return {} end,
+        setstack = debug.setstack or setstack or function() end,
+        getregistry = debug.getregistry or getregistry or getreg or function() return {} end,
+    }
+
+    for k, v in pairs(d_funcs) do
+        getgenv().debug[k] = v
+        if not getgenv()[k] then getgenv()[k] = v end
+    end
+end
+
+-- [8] DRAWING API POLYFILL (Crucial para ESPs/Linhas/Textos se o executor não tiver)
+do
+    if not getgenv().Drawing or not getgenv().Drawing.new then
+        local CoreGui = game:GetService("CoreGui")
+        local RunService = game:GetService("RunService")
+        local Camera = workspace.CurrentCamera
+        
+        -- Cria a tela de desenho
+        local DrawGui = Instance.new("ScreenGui")
+        DrawGui.Name = "Iris_DrawingPolyfill"
+        DrawGui.IgnoreGuiInset = true
+        DrawGui.DisplayOrder = 2147483647
+        
+        local success = pcall(function() DrawGui.Parent = CoreGui end)
+        if not success then DrawGui.Parent = game:GetService("Players").LocalPlayer:WaitForChild("PlayerGui") end
+
+        getgenv().Drawing = {}
+        getgenv().Drawing.Fonts = { UI = 0, System = 1, Plex = 2, Monospace = 3 }
+        
+        local DrawCache = {}
+        getgenv().cleardrawcache = function()
+            for _, obj in pairs(DrawCache) do pcall(function() obj:Remove() end) end
+            DrawCache = {}
+        end
+
+        getgenv().Drawing.new = function(classType)
+            local obj = {}
+            obj.Visible = false
+            obj.ZIndex = 1
+            obj.Transparency = 1
+            obj.Color = Color3.new(1, 1, 1)
+
+            local renderObj = nil
+
+            if classType == "Line" then
+                renderObj = Instance.new("Frame", DrawGui)
+                renderObj.AnchorPoint = Vector2.new(0.5, 0.5)
+                renderObj.BorderSizePixel = 0
+                obj.From = Vector2.new(0, 0)
+                obj.To = Vector2.new(0, 0)
+                obj.Thickness = 1
+                
+                RunService.RenderStepped:Connect(function()
+                    if obj.Visible and renderObj then
+                        renderObj.Visible = true
+                        local center = (obj.From + obj.To) / 2
+                        local dist = (obj.From - obj.To).Magnitude
+                        local angle = math.atan2(obj.To.Y - obj.From.Y, obj.To.X - obj.From.X)
+                        
+                        renderObj.Position = UDim2.new(0, center.X, 0, center.Y)
+                        renderObj.Size = UDim2.new(0, dist, 0, obj.Thickness)
+                        renderObj.Rotation = math.deg(angle)
+                        renderObj.BackgroundColor3 = obj.Color
+                        renderObj.BackgroundTransparency = 1 - obj.Transparency
+                        renderObj.ZIndex = obj.ZIndex
+                    elseif renderObj then
+                        renderObj.Visible = false
+                    end
+                end)
+
+            elseif classType == "Text" then
+                renderObj = Instance.new("TextLabel", DrawGui)
+                renderObj.BackgroundTransparency = 1
+                renderObj.Font = Enum.Font.Code
+                obj.Text = ""
+                obj.Size = 16
+                obj.Center = false
+                obj.Outline = false
+                obj.OutlineColor = Color3.new(0, 0, 0)
+                obj.Position = Vector2.new(0, 0)
+
+                local stroke = Instance.new("UIStroke", renderObj)
+                
+                RunService.RenderStepped:Connect(function()
+                    if obj.Visible and renderObj then
+                        renderObj.Visible = true
+                        renderObj.Text = obj.Text
+                        renderObj.TextSize = obj.Size
+                        renderObj.Position = UDim2.new(0, obj.Position.X, 0, obj.Position.Y)
+                        renderObj.TextColor3 = obj.Color
+                        renderObj.TextTransparency = 1 - obj.Transparency
+                        renderObj.ZIndex = obj.ZIndex
+                        
+                        if obj.Center then
+                            renderObj.AnchorPoint = Vector2.new(0.5, 0)
+                        else
+                            renderObj.AnchorPoint = Vector2.new(0, 0)
+                        end
+                        
+                        stroke.Enabled = obj.Outline
+                        stroke.Color = obj.OutlineColor
+                        stroke.Transparency = 1 - obj.Transparency
+                    elseif renderObj then
+                        renderObj.Visible = false
+                    end
+                end)
+
+            elseif classType == "Circle" then
+                renderObj = Instance.new("Frame", DrawGui)
+                local corner = Instance.new("UICorner", renderObj)
+                corner.CornerRadius = UDim.new(1, 0)
+                local stroke = Instance.new("UIStroke", renderObj)
+                
+                obj.Position = Vector2.new(0, 0)
+                obj.Radius = 0
+                obj.Thickness = 1
+                obj.Filled = false
+
+                RunService.RenderStepped:Connect(function()
+                    if obj.Visible and renderObj then
+                        renderObj.Visible = true
+                        renderObj.Position = UDim2.new(0, obj.Position.X - obj.Radius, 0, obj.Position.Y - obj.Radius)
+                        renderObj.Size = UDim2.new(0, obj.Radius * 2, 0, obj.Radius * 2)
+                        renderObj.ZIndex = obj.ZIndex
+                        
+                        if obj.Filled then
+                            renderObj.BackgroundTransparency = 1 - obj.Transparency
+                            renderObj.BackgroundColor3 = obj.Color
+                            stroke.Enabled = false
+                        else
+                            renderObj.BackgroundTransparency = 1
+                            stroke.Enabled = true
+                            stroke.Thickness = obj.Thickness
+                            stroke.Color = obj.Color
+                            stroke.Transparency = 1 - obj.Transparency
+                        end
+                    elseif renderObj then
+                        renderObj.Visible = false
+                    end
+                end)
+            end
+
+            -- Função de remoção
+            obj.Remove = function()
+                if renderObj then renderObj:Destroy() renderObj = nil end
+                obj.Visible = false
+            end
+            obj.Destroy = obj.Remove
+            
+            table.insert(DrawCache, obj)
+            return obj
+        end
+        
+        getgenv().isrenderobj = function(obj) return type(obj) == "table" and obj.Remove ~= nil end
+    end
+end
+
+print("Iris Compat + Debug + Drawing API Loaded Successfully!")
