@@ -398,13 +398,21 @@ do
             elseif classType == "Text" then
                 renderObj = Instance.new("TextLabel", DrawGui)
                 renderObj.BackgroundTransparency = 1
-                renderObj.Font = Enum.Font.Code
                 obj.Text = ""
                 obj.Size = 16
                 obj.Center = false
                 obj.Outline = false
                 obj.OutlineColor = Color3.new(0, 0, 0)
                 obj.Position = Vector2.new(0, 0)
+                obj.Font = 0 -- Fonte padrão (UI)
+
+                -- Sistema de mapeamento de Fontes do Drawing API para Roblox
+                local FontMapping = {
+                    [0] = Enum.Font.SourceSans,      -- UI
+                    [1] = Enum.Font.Arial,           -- System
+                    [2] = Enum.Font.IBMPlexSans,     -- Plex
+                    [3] = Enum.Font.Code             -- Monospace
+                }
 
                 local stroke = Instance.new("UIStroke", renderObj)
                 
@@ -417,6 +425,9 @@ do
                         renderObj.TextColor3 = obj.Color
                         renderObj.TextTransparency = 1 - obj.Transparency
                         renderObj.ZIndex = obj.ZIndex
+                        
+                        -- Atualiza a fonte dinamicamente baseada no Drawing.Fonts
+                        renderObj.Font = FontMapping[obj.Font] or Enum.Font.SourceSans
                         
                         if obj.Center then
                             renderObj.AnchorPoint = Vector2.new(0.5, 0)
