@@ -1,4 +1,4 @@
--- // IRIS COMPATIBILITY SUITE MERGED & EXTENDED (FIXED 3.0 + DEBUG + DRAWING API) // --
+-- // IRIS COMPATIBILITY SUITE MERGED & EXTENDED (FIXED 3.0 + DEBUG + DRAWING API + LEAK FIX) // --
 if not game:IsLoaded() then
     game.Loaded:Wait()
 end
@@ -161,11 +161,10 @@ do
 
         if setreadonly then pcall(setreadonly, Crypt, false) end
 
-        -- Funções seguras de fallback para evitar crash se o exploit for muito básico
         local CryptFunctions = {
             ["base64"] = {
-                ["encode"] = (crypt and crypt.base64encode) or base64encode or function(data) return game:GetService("HttpService"):JSONEncode(data) end, -- fake encode
-                ["decode"] = (crypt and crypt.base64decode) or base64decode or function(data) return game:GetService("HttpService"):JSONDecode(data) end, -- fake decode
+                ["encode"] = (crypt and crypt.base64encode) or base64encode or function(data) return game:GetService("HttpService"):JSONEncode(data) end,
+                ["decode"] = (crypt and crypt.base64decode) or base64decode or function(data) return game:GetService("HttpService"):JSONDecode(data) end,
             },
             ["custom"] = {
                 ["hash"]    = (crypt and crypt.hash) or function(...) return "hash_not_supported" end,
@@ -213,7 +212,6 @@ do
 
         if not rawget(getgenv(), "syn") then getgenv()["syn"] = {} end
 
-        -- Função para evitar crash caso não exista no C++
         local function dummyReturnEmpty() return {} end
         local function dummyReturnTrue() return true end
         local function dummyReturnNil() return nil end
@@ -264,12 +262,12 @@ do
             ["writeclipboard"] = setclipboard or toclipboard or writeclipboard or function() end,
             ["queue_on_teleport"] = queue_on_teleport or queueonteleport or function() end,
             ["firesignal"] = firesignal or function() end,
-            ["getcustomasset"] = getcustomasset or getsynasset or function() return "" end
+            ["getcustomasset"] = getcustomasset or getsynasset or function() return "" end,
+            ["checkcaller"] = checkcaller or function() return true end -- ADICIONADO PARA EVITAR ERROS
         }
 
         for FuncName, Function in next, Functions do getgenv()[FuncName] = Function; end
         
-        -- Synapse Aliases
         getgenv().syn.request = Functions["http_request"]
         getgenv().syn.queue_on_teleport = Functions["queue_on_teleport"]
         getgenv().syn.secure_call = Functions["securecall"]
@@ -312,7 +310,7 @@ do
     end
 end
 
--- [7] DEBUG LIBRARY POLYFILL (Para Aimbots não crasharem)
+-- [7] DEBUG LIBRARY POLYFILL
 do
     if not getgenv().debug then getgenv().debug = {} end
     
@@ -337,14 +335,13 @@ do
     end
 end
 
--- [8] DRAWING API POLYFILL (Crucial para ESPs/Linhas/Textos se o executor não tiver)
+-- [8] DRAWING API POLYFILL (COM LEAK FIX E CLASSE SQUARE)
 do
     if not getgenv().Drawing or not getgenv().Drawing.new then
         local CoreGui = game:GetService("CoreGui")
         local RunService = game:GetService("RunService")
         local Camera = workspace.CurrentCamera
         
-        -- Cria a tela de desenho
         local DrawGui = Instance.new("ScreenGui")
         DrawGui.Name = "Iris_DrawingPolyfill"
         DrawGui.IgnoreGuiInset = true
@@ -370,6 +367,7 @@ do
             obj.Color = Color3.new(1, 1, 1)
 
             local renderObj = nil
+            local connection = nil -- Variável para prevenir Memory Leak
 
             if classType == "Line" then
                 renderObj = Instance.new("Frame", DrawGui)
@@ -379,7 +377,7 @@ do
                 obj.To = Vector2.new(0, 0)
                 obj.Thickness = 1
                 
-                RunService.RenderStepped:Connect(function()
+                connection = RunService.RenderStepped:Connect(function()
                     if obj.Visible and renderObj then
                         renderObj.Visible = true
                         local center = (obj.From + obj.To) / 2
@@ -410,7 +408,7 @@ do
 
                 local stroke = Instance.new("UIStroke", renderObj)
                 
-                RunService.RenderStepped:Connect(function()
+                connection = RunService.RenderStepped:Connect(function()
                     if obj.Visible and renderObj then
                         renderObj.Visible = true
                         renderObj.Text = obj.Text
@@ -445,7 +443,7 @@ do
                 obj.Thickness = 1
                 obj.Filled = false
 
-                RunService.RenderStepped:Connect(function()
+                connection = RunService.RenderStepped:Connect(function()
                     if obj.Visible and renderObj then
                         renderObj.Visible = true
                         renderObj.Position = UDim2.new(0, obj.Position.X - obj.Radius, 0, obj.Position.Y - obj.Radius)
@@ -467,10 +465,43 @@ do
                         renderObj.Visible = false
                     end
                 end)
+
+            elseif classType == "Square" then
+                renderObj = Instance.new("Frame", DrawGui)
+                local stroke = Instance.new("UIStroke", renderObj)
+                
+                obj.Size = Vector2.new(0, 0)
+                obj.Position = Vector2.new(0, 0)
+                obj.Thickness = 1
+                obj.Filled = false
+                
+                connection = RunService.RenderStepped:Connect(function()
+                    if obj.Visible and renderObj then
+                        renderObj.Visible = true
+                        renderObj.Position = UDim2.new(0, obj.Position.X, 0, obj.Position.Y)
+                        renderObj.Size = UDim2.new(0, obj.Size.X, 0, obj.Size.Y)
+                        renderObj.ZIndex = obj.ZIndex
+                        
+                        if obj.Filled then
+                            renderObj.BackgroundTransparency = 1 - obj.Transparency
+                            renderObj.BackgroundColor3 = obj.Color
+                            stroke.Enabled = false
+                        else
+                            renderObj.BackgroundTransparency = 1
+                            stroke.Enabled = true
+                            stroke.Thickness = obj.Thickness
+                            stroke.Color = obj.Color
+                            stroke.Transparency = 1 - obj.Transparency
+                        end
+                    elseif renderObj then
+                        renderObj.Visible = false
+                    end
+                end)
             end
 
-            -- Função de remoção
+            -- Função de remoção com Leak Fix
             obj.Remove = function()
+                if connection then connection:Disconnect() end -- Desconecta o loop (Prevenção de Lag)
                 if renderObj then renderObj:Destroy() renderObj = nil end
                 obj.Visible = false
             end
