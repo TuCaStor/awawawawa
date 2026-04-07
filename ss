@@ -1,4 +1,5 @@
--- // IRIS COMPATIBILITY SUITE MERGED & EXTENDED (FIXED 3.0 + DEBUG + DRAWING API + LEAK FIX) // --
+-- // IRIS COMPATIBILITY SUITE: ULTIMATE EDITION // --
+-- (Features: Leak Fix, Drawing API, RAM FileSystem, HWID/Input mocks, Hydroxide Bypass)
 if not game:IsLoaded() then
     game.Loaded:Wait()
 end
@@ -205,7 +206,7 @@ do
     end
 end
 
--- [5] API Functions Padding (Alias)
+-- [5] API Functions Padding (Extended with Input & RAM FileSystem)
 do
     if not getgenv()["Iris"]["IrisCompat"] then 
         getgenv()["Iris"]["IrisCompat"] = true 
@@ -215,6 +216,9 @@ do
         local function dummyReturnEmpty() return {} end
         local function dummyReturnTrue() return true end
         local function dummyReturnNil() return nil end
+        
+        -- RAM FileSystem (Impede que configs em JSON crashm por falta de leitura)
+        local FakeFileSystem = {}
 
         local Functions = {
             ["getrawmetatable"] = getrawmetatable or get_raw_metatable or dummyReturnEmpty,
@@ -222,19 +226,33 @@ do
             ["setreadonly"] = setreadonly or make_readonly or function() end,
             ["iswriteable"] = iswriteable or is_writeable or dummyReturnTrue,
 
+            -- Mouse & Keyboard Mocks
             ["mouse1release"] = mouse1release or mouse1up or function() end,
             ["mouse1press"] = mouse1press or mouse1click or function() end,
             ["mouse2release"] = mouse2release or mouse2up or function() end,
             ["mouse2press"] = mouse2press or mouse2click or function() end,
+            ["keypress"] = keypress or function(key) end,
+            ["keyrelease"] = keyrelease or function(key) end,
+            ["mousemoverel"] = mousemoverel or function(x, y) 
+                local cam = workspace.CurrentCamera
+                if cam then cam.CFrame = cam.CFrame * CFrame.Angles(math.rad(-y/5), math.rad(-x/5), 0) end
+            end,
 
-            ["isfolder"] = isfolder or function() return false end,
-            ["isfile"] = isfile or function() return false end,
-            ["makefolder"] = makefolder or function() end,
-            ["writefile"] = writefile or function() end,
-            ["readfile"] = readfile or function() return "" end,
-            ["delfile"] = delfile or function() end,
-            ["delfolder"] = delfolder or function() end,
+            -- Fake RAM FileSystem
+            ["isfolder"] = isfolder or function(path) return FakeFileSystem[path] == "folder" end,
+            ["isfile"] = isfile or function(path) return type(FakeFileSystem[path]) == "string" end,
+            ["makefolder"] = makefolder or function(path) FakeFileSystem[path] = "folder" end,
+            ["writefile"] = writefile or function(path, data) FakeFileSystem[path] = tostring(data) end,
+            ["readfile"] = readfile or function(path) return FakeFileSystem[path] or "{}" end, -- Return {} prevents JSONDecode errors
+            ["delfile"] = delfile or function(path) FakeFileSystem[path] = nil end,
+            ["delfolder"] = delfolder or function(path) FakeFileSystem[path] = nil end,
+            ["listfiles"] = listfiles or function(folder) 
+                local files = {} 
+                for k, v in pairs(FakeFileSystem) do if k:find(folder) and v ~= "folder" then table.insert(files, k) end end 
+                return files 
+            end,
 
+            -- Hooking
             ["hookfunction"] = hookfunction or hookfunc or function(old, new) return old end,
             ["hookmetamethod"] = hookmetamethod or function() return function() end end,
             ["newcclosure"] = newcclosure or function(f) return f end,
@@ -246,8 +264,20 @@ do
             ["getnamecallmethod"] = getnamecallmethod or function() return "" end,
             ["setnamecallmethod"] = setnamecallmethod or function() end,
 
+            -- Auto-Farm Interactions
             ["getnilinstances"] = getnilinstances or dummyReturnEmpty,
-            ["fireclickdetector"] = fireclickdetector or function(cd) if cd and cd.Parent then if cd.Parent:IsA("Part") then game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = cd.Parent.CFrame end end end,
+            ["fireclickdetector"] = fireclickdetector or function(cd) if cd and cd.Parent and cd.Parent:IsA("Part") then game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = cd.Parent.CFrame end end,
+            ["fireproximityprompt"] = fireproximityprompt or function(Prompt)
+                if typeof(Prompt) == "Instance" and Prompt:IsA("ProximityPrompt") then
+                    local oldHold = Prompt.HoldDuration
+                    Prompt.HoldDuration = 0
+                    Prompt:InputHoldBegin()
+                    Prompt:InputHoldEnd()
+                    Prompt.HoldDuration = oldHold
+                end
+            end,
+            ["firetouchinterest"] = firetouchinterest or function(Part, Toucher, Toggle) end,
+
             ["gethiddenproperties"] = gethiddenproperties or dummyReturnEmpty,
             ["sethiddenproperties"] = sethiddenproperties or function() end,
             ["getscripts"] = getscripts or getrunningscripts or dummyReturnEmpty,
@@ -256,14 +286,14 @@ do
             ["getthreadcontext"] = getthreadidentity or getthreadcontext or function() return 8 end,
             ["setthreadcontext"] = setthreadidentity or setthreadcontext or function() end,
             ["securecall"] = securecall or function(func, env, ...) return coroutine.wrap(func)(...) end,
+            ["checkcaller"] = checkcaller or function() return true end,
 
             ["http_request"] = request or http_request or httprequest or function() return {Body = "", StatusCode = 404} end,
             ["isrbxactive"] = iswindowactive or isrbxactive or dummyReturnTrue,
             ["writeclipboard"] = setclipboard or toclipboard or writeclipboard or function() end,
             ["queue_on_teleport"] = queue_on_teleport or queueonteleport or function() end,
             ["firesignal"] = firesignal or function() end,
-            ["getcustomasset"] = getcustomasset or getsynasset or function() return "" end,
-            ["checkcaller"] = checkcaller or function() return true end -- ADICIONADO PARA EVITAR ERROS
+            ["getcustomasset"] = getcustomasset or getsynasset or function() return "" end
         }
 
         for FuncName, Function in next, Functions do getgenv()[FuncName] = Function; end
@@ -335,7 +365,7 @@ do
     end
 end
 
--- [8] DRAWING API POLYFILL (COM LEAK FIX E CLASSE SQUARE)
+-- [8] DRAWING API POLYFILL (ULTIMATE)
 do
     if not getgenv().Drawing or not getgenv().Drawing.new then
         local CoreGui = game:GetService("CoreGui")
@@ -367,7 +397,7 @@ do
             obj.Color = Color3.new(1, 1, 1)
 
             local renderObj = nil
-            local connection = nil -- Variável para prevenir Memory Leak
+            local connection = nil
 
             if classType == "Line" then
                 renderObj = Instance.new("Frame", DrawGui)
@@ -404,14 +434,13 @@ do
                 obj.Outline = false
                 obj.OutlineColor = Color3.new(0, 0, 0)
                 obj.Position = Vector2.new(0, 0)
-                obj.Font = 0 -- Fonte padrão (UI)
+                obj.Font = 0
 
-                -- Sistema de mapeamento de Fontes do Drawing API para Roblox
                 local FontMapping = {
-                    [0] = Enum.Font.SourceSans,      -- UI
-                    [1] = Enum.Font.Arial,           -- System
-                    [2] = Enum.Font.IBMPlexSans,     -- Plex
-                    [3] = Enum.Font.Code             -- Monospace
+                    [0] = Enum.Font.SourceSans,
+                    [1] = Enum.Font.Arial,
+                    [2] = Enum.Font.IBMPlexSans,
+                    [3] = Enum.Font.Code
                 }
 
                 local stroke = Instance.new("UIStroke", renderObj)
@@ -425,8 +454,6 @@ do
                         renderObj.TextColor3 = obj.Color
                         renderObj.TextTransparency = 1 - obj.Transparency
                         renderObj.ZIndex = obj.ZIndex
-                        
-                        -- Atualiza a fonte dinamicamente baseada no Drawing.Fonts
                         renderObj.Font = FontMapping[obj.Font] or Enum.Font.SourceSans
                         
                         if obj.Center then
@@ -508,11 +535,20 @@ do
                         renderObj.Visible = false
                     end
                 end)
+                
+            elseif classType == "Triangle" or classType == "Quad" then
+                -- Polyfill Fake (Evita Crash de ESPs que usam linhas 3D complexas)
+                obj.PointA = Vector2.new(0,0)
+                obj.PointB = Vector2.new(0,0)
+                obj.PointC = Vector2.new(0,0)
+                if classType == "Quad" then obj.PointD = Vector2.new(0,0) end
+                obj.Thickness = 1
+                obj.Filled = false
+                -- Como não desenha na tela (mock de dados), não usamos RenderStepped.
             end
 
-            -- Função de remoção com Leak Fix
             obj.Remove = function()
-                if connection then connection:Disconnect() end -- Desconecta o loop (Prevenção de Lag)
+                if connection then connection:Disconnect() end 
                 if renderObj then renderObj:Destroy() renderObj = nil end
                 obj.Visible = false
             end
@@ -526,4 +562,4 @@ do
     end
 end
 
-print("Iris Compat + Debug + Drawing API Loaded Successfully!")
+print("Iris Compat ULTIMATE Loaded Successfully!")
