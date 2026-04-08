@@ -309,34 +309,18 @@ end
 do
     local RequestFunc = getgenv().request or getgenv().http_request
     if RequestFunc then
+        -- Apenas recria a função HttpPost globalmente, sem injetar no metatable do jogo (Evita banimentos/kicks)
         getgenv().HttpPost = function(self, url, body, contentType)
-             local response = RequestFunc({ Url = url, Method = "POST", Headers = {["Content-Type"] = contentType or "application/json"}, Body = body })
+             local response = RequestFunc({ 
+                 Url = url, 
+                 Method = "POST", 
+                 Headers = {["Content-Type"] = contentType or "application/json"}, 
+                 Body = body 
+             })
             return response.Body or ""
         end
-
-        local mt = getrawmetatable(game)
-        if mt and mt.__namecall then
-            local old_namecall = mt.__namecall
-            if setreadonly then setreadonly(mt, false) end
-
-            mt.__namecall = newcclosure(function(self, ...)
-                local method = getnamecallmethod()
-                local args = {...}
-
-                if checkcaller and checkcaller() then
-                    if method == "HttpPost" or method == "HttpPostAsync" then
-                        return getgenv().HttpPost(self, args[1], args[2])
-                    end
-                    if method == "HttpGet" or method == "HttpGetAsync" then
-                        if tostring(args[1]):find("Upbolt/Hydroxide/commits") then
-                            return '[{"commit": {"message": "Bypassed by Iris Compat"}}]'
-                        end
-                    end
-                end
-                return old_namecall(self, ...)
-            end)
-            if setreadonly then setreadonly(mt, true) end
-        end
+        
+        getgenv().HttpPostAsync = getgenv().HttpPost
     end
 end
 
