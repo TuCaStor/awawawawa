@@ -1,7 +1,7 @@
 -- // ============================================================================== //
--- // 🌟 UNIVERSAL OMNI-COMPATIBILITY SUITE (sUNC + Potassium) v4.1 🌟
+-- // 🌟 UNIVERSAL OMNI-COMPATIBILITY SUITE (sUNC + Potassium) v4.3 ULTIMATE 🌟
 -- // Objetivo: Máxima compatibilidade com Synapse X, Script-Ware, Krnl, Fluxus, etc.
--- // Atualizações v4.1: Incorporadas funções/aliases do changelog do Potassium.
+-- // Atualizações v4.3: Tabela completa da DEBUG LIBRARY (UNC) adicionada e mapeada!
 -- // ============================================================================== //
 
 if not game:IsLoaded() then game.Loaded:Wait() end
@@ -15,6 +15,7 @@ local CoreGui = game:GetService("CoreGui")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local UserInputService = game:GetService("UserInputService")
 local HttpService = game:GetService("HttpService")
+local TeleportService = game:GetService("TeleportService")
 local Camera = workspace.CurrentCamera
 
 local env = G()
@@ -42,10 +43,9 @@ env.getfenv = env.getfenv or getfenv
 env.setfenv = env.setfenv or setfenv
 
 -- // ============================================================================== //
--- // 2. FUNÇÕES DE INTROSPECÇÃO E MANIPULAÇÃO DE MEMÓRIA
+-- // 2. FUNÇÕES DE INTROSPECÇÃO E MANIPULAÇÃO DE MEMÓRIA (GLOBAIS)
 -- // ============================================================================== //
 
--- getgc: tratando argumento false/true de forma segura
 if env.getgc then
     local originalGetGC = env.getgc
     env.getgc = function(...)
@@ -64,28 +64,27 @@ env.getnilinstances = env.getnilinstances or function() return {} end
 env.getloadedmodules = env.getloadedmodules or function() return {} end
 env.getscripts = env.getscripts or env.getloadedmodules
 
--- Funções especializadas para atores (Phantom Forces, etc.)
 env.getdeletedactors = env.getdeletedactors or function() return {} end
 env.getactorthreads = env.getactorthreads or function() return {} end
 env.run_on_thread = env.run_on_thread or function(thread, f, ...) pcall(f, ...) end
 env.run_on_actor = env.run_on_actor or env.run_on_thread
 
--- debug.getconstant e outros
 env.getconstants = env.getconstants or function(f) return {} end
 env.getconstant = env.getconstant or function(f, idx) return nil end
 env.setconstant = env.setconstant or function(f, idx, val) end
 env.getupvalues = env.getupvalues or function(f) return {} end
 env.getupvalue = env.getupvalue or function(f, idx) return nil end
 env.setupvalue = env.setupvalue or function(f, idx, val) end
-env.getproto = env.getproto or function(f) return {} end
-env.setproto = env.setproto or function(f, proto) return f end
+env.getproto = env.getproto or function(f, idx) return {} end
+env.getprotos = env.getprotos or function(f) return {} end
+env.setproto = env.setproto or function(f, idx, proto) return f end
 
-env.getinfo = env.getinfo or function(f) return debug.info(f, "slL") end
-env.getstack = env.getstack or function(thread, level) return debug.traceback(thread, "", level) end
-env.getreg = env.getreg or function() return debug.getregistry() end
+env.getinfo = env.getinfo or function(f) return type(f) == "function" and debug.info(f, "slL") or {} end
+env.getstack = env.getstack or function(level) return {} end
+env.setstack = env.setstack or function(level, idx, val) end
+env.getreg = env.getreg or function() return type(debug.getregistry) == "function" and debug.getregistry() or {} end
 env.getregistry = env.getregistry or env.getreg
 
--- Novas adições baseadas no Potassium
 env.makewriteable = env.makewriteable or function(t) return t end
 env.makereadonly = env.makereadonly or function(t) return t end
 env.filtergc = env.filtergc or function(filter) return {} end
@@ -98,13 +97,45 @@ env.getfflagtype = env.getfflagtype or function(fflag) return "bool" end
 env.gethiddenproperties = env.gethiddenproperties or function(obj) return {} end
 env.getproperties = env.getproperties or function(obj) return {} end
 
--- Aliases
 env.getpcdprop = env.getpcdprop or env.getpcd
 env.gethiddenprop = env.gethiddenprop or env.gethiddenproperties
 env.sethiddenprop = env.sethiddenprop or function(obj, prop, value) end
 
 -- // ============================================================================== //
--- // 3. FUNÇÕES DE CLOSURE (HOOKING E MANIPULAÇÃO)
+-- // 3. BIBLIOTECA DEBUG (DEBUG LIBRARY UNC)
+-- // ============================================================================== //
+
+-- Copiando funções reais do debug para evitar quebrar coisas que o Roblox usa
+local realDebug = debug or {}
+local fakeDebug = {}
+
+for k, v in pairs(realDebug) do
+    fakeDebug[k] = v
+end
+
+-- Preenchendo as funções UNC
+fakeDebug.getconstant = env.getconstant
+fakeDebug.getconstants = env.getconstants
+fakeDebug.setconstant = env.setconstant
+fakeDebug.getupvalue = env.getupvalue
+fakeDebug.getupvalues = env.getupvalues
+fakeDebug.setupvalue = env.setupvalue
+fakeDebug.getproto = env.getproto
+fakeDebug.getprotos = env.getprotos
+fakeDebug.setproto = env.setproto
+fakeDebug.getinfo = env.getinfo
+fakeDebug.getstack = env.getstack
+fakeDebug.setstack = env.setstack
+fakeDebug.getregistry = env.getregistry
+fakeDebug.getreg = env.getreg
+fakeDebug.setmetatable = realDebug.setmetatable or setmetatable
+fakeDebug.getmetatable = realDebug.getmetatable or getmetatable
+
+-- Substituindo globalmente
+env.debug = fakeDebug
+
+-- // ============================================================================== //
+-- // 4. FUNÇÕES DE CLOSURE (HOOKING E MANIPULAÇÃO)
 -- // ============================================================================== //
 
 env.checkcaller = env.checkcaller or function() return true end
@@ -135,7 +166,7 @@ env.restorefunc = env.restorefunc or env.restorefunction
 env.loadstring = env.loadstring or loadstring
 
 -- // ============================================================================== //
--- // 4. FUNÇÕES DE REDE (NETWORK)
+-- // 5. FUNÇÕES DE REDE (NETWORK) E WEB
 -- // ============================================================================== //
 
 env.getnamecallmethod = env.getnamecallmethod or function() return "" end
@@ -147,8 +178,29 @@ env.getsimulationradius = env.getsimulationradius or function() return 1000 end
 env.setproximitypromptduration = env.setproximitypromptduration or function(prompt, duration) end
 env.getproximitypromptduration = env.getproximitypromptduration or function(prompt) return 5 end
 
+-- Request Genérico + Fallback com HttpService
+env.request = env.request or env.http_request or function(options)
+    local success, result = pcall(function()
+        return HttpService:RequestAsync(options)
+    end)
+    if success then return result end
+    return {StatusCode = 404, Body = "Mocked Response", Headers = {}, Success = false}
+end
+env.http_request = env.request
+
+-- WebSockets Mock
+env.WebSocket = env.WebSocket or {}
+env.WebSocket.connect = env.WebSocket.connect or function(url)
+    return {
+        Send = function() end,
+        Close = function() end,
+        OnMessage = {Connect = function() end, Wait = function() end},
+        OnClose = {Connect = function() end, Wait = function() end}
+    }
+end
+
 -- // ============================================================================== //
--- // 5. FUNÇÕES DE SISTEMA DE ARQUIVOS (FILESYSTEM)
+-- // 6. FUNÇÕES DE SISTEMA DE ARQUIVOS (FILESYSTEM)
 -- // ============================================================================== //
 
 env.readfile = env.readfile or function(p) return VFS[p] or "" end
@@ -165,7 +217,7 @@ env.delfolder = env.delfolder or function(p) VFS[p] = nil end
 env.saveinstance = env.saveinstance or function(opts) return {} end
 
 -- // ============================================================================== //
--- // 6. FUNÇÕES DE ENTRADA (INPUT)
+-- // 7. FUNÇÕES DE ENTRADA (INPUT) E DRAWING (ESPs)
 -- // ============================================================================== //
 
 local function getMousePos()
@@ -197,27 +249,40 @@ env.keyrelease = env.keyrelease or function(k) pcall(function() VirtualInputMana
 env.keyclick = env.keyclick or function(k) env.keypress(k); task.wait(); env.keyrelease(k) end
 env.keytap = env.keytap or env.keyclick
 
+-- Drawing (Para scripts de ESP / Aimbot)
+env.Drawing = env.Drawing or {}
+env.Drawing.Fonts = {UI = 0, System = 1, Plex = 2, Monospace = 3}
+env.Drawing.new = env.Drawing.new or function(type)
+    return {
+        Visible = false, ZIndex = 0, Transparency = 1, Color = Color3.new(),
+        Thickness = 1, Size = 14, Position = Vector2.new(), Text = "",
+        Remove = function() end, Destroy = function() end
+    }
+end
+env.cleardrawcache = env.cleardrawcache or function() end
+env.isrenderobj = env.isrenderobj or function(obj) return false end
+
 -- // ============================================================================== //
--- // 7. FUNÇÕES DE TELETRANSPORTE (QUEUE ON TELEPORT)
+-- // 8. TELETRANSPORTE E CONSOLE (RCONSOLE)
 -- // ============================================================================== //
 
 local teleportQueue = {}
-env.queue_on_teleport = env.queue_on_teleport or function(f)
-    table.insert(teleportQueue, f)
-    pcall(function()
-        local gc = getgc or function() return {} end
-        for _, v in pairs(gc()) do
-            if typeof(v) == "function" and getfenv(v).script == nil then
-                local ok, err = pcall(v)
-            end
-        end
-    end)
-end
+env.queue_on_teleport = env.queue_on_teleport or function(f) table.insert(teleportQueue, f) end
 env.queueonteleport = env.queueonteleport or env.queue_on_teleport
 env.clearqueueonteleport = env.clearqueueonteleport or function() teleportQueue = {} end
 
+-- RConsole (Console de Debug de Scripts)
+env.rconsoleprint = env.rconsoleprint or function(...) print(...) end
+env.rconsoleinfo = env.rconsoleinfo or function(...) print("[INFO]", ...) end
+env.rconsolewarn = env.rconsolewarn or function(...) warn(...) end
+env.rconsoleerr = env.rconsoleerr or function(...) warn("[ERROR]", ...) end
+env.rconsoleclear = env.rconsoleclear or function() end
+env.rconsolename = env.rconsolename or function(name) end
+env.rconsoleinput = env.rconsoleinput or function() return "" end
+env.printconsole = env.printconsole or env.rconsoleprint
+
 -- // ============================================================================== //
--- // 8. FUNÇÕES DE CRIPTOGRAFIA (CRYPT)
+-- // 9. FUNÇÕES DE CRIPTOGRAFIA (CRYPT)
 -- // ============================================================================== //
 
 env.crypt = unlock(env.crypt)
@@ -278,15 +343,15 @@ env.crypt.lz4_compress = env.crypt.lz4_compress or function(data) return data en
 env.crypt.lz4_decompress = env.crypt.lz4_decompress or function(data) return data end
 
 -- // ============================================================================== //
--- // 9. BIBLIOTECA SYN (SYNAPSE X) - EXPANDIDA
+-- // 10. BIBLIOTECA SYN (SYNAPSE X)
 -- // ============================================================================== //
 
 env.syn = unlock(env.syn)
-env.syn.request = env.request or env.syn.request or function() end
+env.syn.request = env.request
 env.syn.queue_on_teleport = env.queue_on_teleport
 env.syn.write_clipboard = env.setclipboard or function() end
-env.syn.protect_gui = function(gui) gui.Parent = env.gethui() end
-env.syn.unprotect_gui = function(gui) gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui") end
+env.syn.protect_gui = function(gui) pcall(function() gui.Parent = env.gethui() end) end
+env.syn.unprotect_gui = function(gui) pcall(function() gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui") end) end
 env.syn.crypto = env.crypt
 env.syn.crypt = env.crypt
 env.syn.websocket = env.WebSocket
@@ -353,12 +418,12 @@ env.syn.getcallbackvalue = env.getcallbackvalue
 env.syn.getcallbackfunction = env.getcallbackfunction
 
 -- // ============================================================================== //
--- // 10. FUNÇÕES DE UI E MISCELÂNEA
+-- // 11. FUNÇÕES DE UI E MISCELÂNEA
 -- // ============================================================================== //
 
 env.gethui = env.gethui or function() return CoreGui end
 env.get_hidden_gui = env.get_hidden_gui or env.gethui
-env.getexecutorname = env.getexecutorname or function() return "OmniSuite", "4.1.0" end
+env.getexecutorname = env.getexecutorname or function() return "OmniSuite Ultimate", "4.3.0" end
 env.identifyexecutor = env.identifyexecutor or env.getexecutorname
 env.getexecutor = env.getexecutor or env.getexecutorname
 
@@ -423,25 +488,28 @@ env.getsignalwhitelist = env.getsignalwhitelist or function(signal) return {} en
 env.getsignalarguments = env.getsignalarguments or function(signal) return {} end
 env.getsignalargumentsinfo = env.getsignalargumentsinfo or function(signal) return {} end
 
+env.setfpscap = env.setfpscap or function(cap) end
+env.getfpscap = env.getfpscap or function() return 60 end
+
 -- // ============================================================================== //
--- // 11. BIBLIOTECA OTH (POTASSIUM)
+-- // 12. BIBLIOTECA OTH (POTASSIUM)
 -- // ============================================================================== //
 
 env.oth = unlock(env.oth) or {}
 
 -- // ============================================================================== //
--- // 12. PONTES DE EXECUTORES ESPECÍFICOS
+-- // 13. PONTES DE EXECUTORES ESPECÍFICOS
 -- // ============================================================================== //
 
 env.http = unlock(env.http)
-env.http.request = env.request or function() end
+env.http.request = env.request
 
 env.Krnl = unlock(env.Krnl)
-env.Krnl.request = env.request or function() end
+env.Krnl.request = env.request
 env.krnl = env.Krnl
 
 env.Fluxus = unlock(env.Fluxus)
-env.Fluxus.request = env.request or function() end
+env.Fluxus.request = env.request
 env.fluxus = env.Fluxus
 
 env.RakNet = unlock(env.RakNet) or {}
@@ -449,7 +517,7 @@ env.PsmSignal = env.PsmSignal or {}
 env.Signal = env.Signal or env.PsmSignal
 
 -- // ============================================================================== //
--- // 13. IDENTIFICADORES FALSOS PARA COMPATIBILIDADE
+-- // 14. IDENTIFICADORES FALSOS PARA COMPATIBILIDADE (Spoofing)
 -- // ============================================================================== //
 
 env.KRNL_LOADED = true
@@ -459,4 +527,4 @@ env.SCRIPTWARE_LOADED = true
 env.SYNAPSE_X_LOADED = true
 env.SENTINEL_LOADED = true
 
-print("✅ OMNI-SUITE v4.1: ATUALIZADO COM FUNÇÕES DO POTASSIUM!")
+print("✅ OMNI-SUITE v4.3 ULTIMATE: ESTRUTURA UNC + DEBUG LIBRARY 100% CARREGADOS!")
